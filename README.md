@@ -1,2 +1,2 @@
 # gganimate
-gganimate package
+gganimate packageを理解するためのあれこれ
