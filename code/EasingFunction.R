@@ -51,7 +51,7 @@ t_vec <- seq(from = 0, to = 1, length.out = 11)
 
 ### ・linear -----
 
-# linear
+# Linear
 linear_df <- tibble::tibble(
   t = t_vec, 
   y = t, 
@@ -59,23 +59,51 @@ linear_df <- tibble::tibble(
 )
 
 
+### ・quadratic -----
+
+# Quadratic-in
+quad_in_df <- tibble::tibble(
+  t = t_vec, 
+  y = t^2, 
+  easing_fnc = "quad-in"
+)
+
+# Quadratic-out
+quad_out_df <- tibble::tibble(
+  t = t_vec, 
+  y = t * (2 - t), 
+  easing_fnc = "quad-out"
+)
+
+# Quadratic-inout
+quad_inout_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t < 0.5, 
+    true = 2 * t^2, 
+    false = 1 - (2 - 2 * t)^2 * 0.5
+  ), 
+  easing_fnc = "quad-in-out"
+)
+
+
 ### ・cubic -----
 
-# cubic-in
+# Cubic-in
 cubic_in_df <- tibble::tibble(
   t = t_vec, 
   y = t^3, 
   easing_fnc = "cubic-in"
 )
 
-# cubic-out
+# Cubic-out
 cubic_out_df <- tibble::tibble(
   t = t_vec, 
   y = 1 - (1 - t)^3, 
   easing_fnc = "cubic-out"
 )
 
-# cubic-inout
+# Cubic-inout
 cubic_inout_df <- tibble::tibble(
   t = t_vec, 
   y = dplyr::if_else(
@@ -87,9 +115,9 @@ cubic_inout_df <- tibble::tibble(
 )
 
 
-### ・quartic
+### ・quartic -----
 
-# quartic-in
+# Quartic-in
 quart_in_df <- tibble::tibble(
   t = t_vec, 
   y = t^4, 
@@ -103,7 +131,7 @@ quart_out_df <- tibble::tibble(
   easing_fnc = "quart-out"
 )
 
-# quartic-inout
+# Quartic-inout
 quart_inout_df <- tibble::tibble(
   t = t_vec, 
   y = dplyr::if_else(
@@ -112,6 +140,99 @@ quart_inout_df <- tibble::tibble(
     false = 1 - (2 - 2 * t)^4 * 0.5
   ), 
   easing_fnc = "quart-in-out"
+)
+
+
+### ・quintic -----
+
+# Quintic-in
+quint_in_df <- tibble::tibble(
+  t = t_vec, 
+  y = t^5, 
+  easing_fnc = "quint-in"
+)
+
+# Quintic-out
+quint_out_df <- tibble::tibble(
+  t = t_vec, 
+  y = 1 - (1 - t)^5, 
+  easing_fnc = "quint-out"
+)
+
+# Quintic-inout
+quint_inout_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t < 0.5, 
+    true = 16 * t^5, 
+    false = 1 - (2 - 2 * t)^5 * 0.5
+  ), 
+  easing_fnc = "quint-in-out"
+)
+
+
+### ・exponential -----
+
+# Exponential-in
+expo_in_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t == 0, 
+    true = 0, 
+    false = 2^(10 * t - 10)
+  ), 
+  easing_fnc = "expo-in"
+)
+
+# Exponential-out
+expo_out_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t == 1, 
+    true = 1, 
+    false = 1 - 2^(-10 * t)
+  ), 
+  easing_fnc = "expo-out"
+)
+
+# Exponential-inout
+expo_inout_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::case_when(
+    t == 0 ~ 0, 
+    t == 1 ~ 1, 
+    t < 0.5 ~ 2^(20 * t - 11), 
+    t >= 0.5 ~ 1 - 2^(9 - 20 * t)
+  ), 
+  easing_fnc = "expo-in-out"
+)
+
+
+### ・circular -----
+
+# Circular-in
+circ_in_df <- tibble::tibble(
+  t = t_vec, 
+  y = 1 - sqrt(1 - t^2), 
+  easing_fnc = "circ-in"
+)
+
+# Circular-out
+circ_out_df <- tibble::tibble(
+  t = t_vec, 
+  y = sqrt(t * (2 - t)), 
+  easing_fnc = "circ-out"
+)
+
+# Circular-inout
+circ_inout_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t < 0.5, 
+    true = (1 - sqrt(1 - 4 * t^2)) * 0.5, 
+    false = (sqrt(1 - (2 - 2 * t)^2) + 1) * 0.5
+  ), 
+  easing_fnc = "circ-in-out"
 )
 
 
@@ -162,7 +283,7 @@ gganimate::animate(plot = anim, nframes = 50, fps = 20)
 
 # 比較対象の設定 -----------------------------------------------------------------
 
-# 比較対象を結合:quadratic
+# Quadratic関数を結合
 easing_df <- rbind(
   linear_df, 
   quad_in_df, 
@@ -173,7 +294,7 @@ easing_df <- rbind(
     easing_fnc = factor(easing_fnc, level = c("linear", "quad-in", "quad-out", "quad-in-out"))
   ) # 因子型に変換
 
-# 比較対象を結合:cubic
+# Cubic関数を結合
 easing_df <- rbind(
   linear_df, 
   cubic_in_df, 
@@ -184,6 +305,63 @@ easing_df <- rbind(
     easing_fnc = factor(easing_fnc, level = c("linear", "cubic-in", "cubic-out", "cubic-in-out"))
   ) # 因子型に変換
 
+# Quartic関数を結合
+easing_df <- rbind(
+  linear_df, 
+  quart_in_df, 
+  quart_out_df, 
+  quart_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "quart-in", "quart-out", "quart-in-out"))
+  ) # 因子型に変換
+
+# Quintic関数を結合
+easing_df <- rbind(
+  linear_df, 
+  quint_in_df, 
+  quint_out_df, 
+  quint_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "quint-in", "quint-out", "quint-in-out"))
+  ) # 因子型に変換
+
+# Qircular関数を結合
+easing_df <- rbind(
+  linear_df, 
+  circ_in_df, 
+  circ_out_df, 
+  circ_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "circ-in", "circ-out", "circ-in-out"))
+  ) # 因子型に変換
+
+# Inタイプの関数を結合
+easing_df <- rbind(
+  linear_df, 
+  quad_in_df, 
+  cubic_in_df, 
+  quart_in_df, 
+  quint_in_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "quad-in", "cubic-in", "quart-in", "quint-in"))
+  ) # 因子型に変換
+
+# InOutタイプの関数を結合
+easing_df <- rbind(
+  linear_df, 
+  quad_inout_df, 
+  cubic_inout_df, 
+  quart_inout_df, 
+  quint_inout_df, 
+  expo_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "quad-in-out", "cubic-in-out", "quart-in-out", "quint-in-out", "expo-in-out"))
+  ) # 因子型に変換
 
 unique(easing_df[["easing_fnc"]])
 
@@ -216,7 +394,7 @@ anim <- ggplot(easing_df, aes(x = t, y = y, color = easing_fnc)) +
   geom_point(mapping = aes(y = 0), color = "pink", size = 5) + 
   geom_point(size = 5) + # イージング曲線上の点
   gganimate::transition_reveal(along = t) + # フレーム
-  scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
+  #scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
   coord_fixed(ratio = 1) + # アスペクト比
   labs(title = "Easing Functions", 
        subtitle = "t = {round(frame_along, 2)}", 
@@ -231,14 +409,16 @@ gganimate::animate(plot = anim, nframes = 60, fps = 20, width = 600, height = 60
 anim <- ggplot() + 
   geom_tile(data = bar_df, mapping = aes(x = x, y = y/2, height = y, fill = easing_fnc), 
            alpha = 0.7, width = 0.9/fnc_size) + # イージングバー
+  geom_text(data = bar_df, mapping = aes(x = x, y = 0, label = easing_fnc, color = easing_fnc), 
+            vjust = 1) + # 関数名
   geom_hline(data = easing_df, mapping = aes(yintercept = y, color = easing_fnc), 
              linetype = "dashed") + # 変化量の線
   geom_line(data = line_df, mapping = aes(x = x, y = y, color = easing_fnc)) + # イージング曲線
   geom_point(data = easing_df, mapping = aes(x = t, y = y, color = easing_fnc), 
              alpha = 0.5, size = 5) + # イージング曲線上の点
   gganimate::transition_reveal(along = t) + # フレーム
-  scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
-  scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # バーの色:(不必要)
+  #scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
+  #scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # バーの色:(不必要)
   coord_fixed(ratio = 1) + # アスペクト比
   labs(title = "Easing Functions", 
        subtitle = "t = {round(frame_along, 2)}", 
@@ -246,7 +426,7 @@ anim <- ggplot() +
        x = "time", y = expression(f(x))) # ラベル
 
 # gif画像を作成
-gganimate::animate(plot = anim, nframes = 60, fps = 20, width = 600, height = 600)
+gganimate::animate(plot = anim, nframes = 50, fps = 50, width = 600, height = 600)
 
 
 # 動画を作成
@@ -299,8 +479,8 @@ anim <- ggplot(point_df, aes(x = x, y = y, color = easing_fnc)) +
              size = 5, alpha = 0.2, show.legend = FALSE) + # 点の軌跡
   gganimate::transition_manual(frame = frame) + # フレーム
   scale_x_reverse(breaks = unique(point_df[["x"]]), labels = unique(point_df[["easing_fnc"]]), minor_breaks = FALSE) + # x軸目盛の反転
-  scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
-  scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
+  #scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
+  #scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
   coord_flip() + # 軸の入れ替え
   labs(title = "Cubic Easing Function", 
        subtitle = "t = {current_frame}", 
@@ -324,8 +504,8 @@ gganimate::anim_save(filename = "output/Easing/_point.mp4", animation = m)
 # イージング関数の数を取得
 fnc_size <- length(unique(easing_df[["easing_fnc"]]))
 
-# 
-easing_df2 <- easing_df %>% 
+# 散布図用のデータフレームを作成
+point_df <- easing_df %>% 
   dplyr::mutate(
     x = rep(1:fnc_size, each = length(t_vec))
   ) %>% 
@@ -333,7 +513,7 @@ easing_df2 <- easing_df %>%
 
 # イージングされた拡大する点を作図
 anim <- ggplot() + 
-  geom_point(data = easing_df2, mapping = aes(x = x, y = 0, size = y, color = easing_fnc)) + # 散布図
+  geom_point(data = point_df, mapping = aes(x = x, y = 0, size = y, color = easing_fnc)) + # 散布図
   gganimate::transition_reveal(along = t) + # フレーム
   scale_size_continuous(range = c(0, 20)) + # 点のサイズ
   scale_x_continuous(breaks = unique(easing_df2[["x"]]), labels = unique(easing_df2[["easing_fnc"]]), 
