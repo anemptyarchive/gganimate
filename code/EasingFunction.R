@@ -46,7 +46,7 @@ ggplot() +
 
 # 時間変化の値を作成:(0 <= t <= 1)
 t_vec <- seq(from = 0, to = 1, by = 0.01)
-t_vec <- seq(from = 0, to = 1, length.out = 11)
+t_vec <- seq(from = 0, to = 1, length.out = 21)
 
 
 ### ・linear -----
@@ -208,6 +208,30 @@ expo_inout_df <- tibble::tibble(
 )
 
 
+### ・sine -----
+
+# Sine-in
+sine_in_df <- tibble::tibble(
+  t = t_vec, 
+  y = 1 - cos(0.5 * pi * t), 
+  easing_fnc = "sine-in"
+)
+
+# Sine-out
+sine_out_df <- tibble::tibble(
+  t = t_vec, 
+  y = sin(0.5 * pi * t), 
+  easing_fnc = "sine-out"
+)
+
+# Sine-inout
+sine_inout_df <- tibble::tibble(
+  t = t_vec, 
+  y = (1 - cos(pi * t)) * 0.5, 
+  easing_fnc = "sine-in-out"
+)
+
+
 ### ・circular -----
 
 # Circular-in
@@ -236,24 +260,159 @@ circ_inout_df <- tibble::tibble(
 )
 
 
+### ・back -----
+
+# Back-in
+back_in_df <- tibble::tibble(
+  t = t_vec, 
+  y = (1.70158 + 1) * t^3 - 1.70158 * t^2, 
+  easing_fnc = "back-in"
+)
+
+# Back-out
+back_out_df <- tibble::tibble(
+  t = t_vec, 
+  y = 1 - (1.70158 + 1) * (1 - t)^3 + 1.70158 * (1 - t)^2, 
+  easing_fnc = "back-out"
+)
+
+# Back-inout
+back_inout_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t < 0.5, 
+    true = 4 * (1.70158 + 1) * t^3 - 2 * 1.70158 * t^2, 
+    false = 1 - 4 * (1.70158 + 1) * (1 - t)^3 + 2 * 1.70158 * (1 - t)^2
+  ), 
+  easing_fnc = "back-in-out"
+)
+
+
 ### ・elastic -----
 
-# elastic-out
+# Elastic-in
+elastic_in_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t == 0, 
+    true = 0, 
+    false = -2^(10 * t - 10) * sin((10 * t - 10.75) * 2 * pi / 3)
+  ), 
+  easing_fnc = "elastic-in"
+)
+
+# Elastic-out
 elastic_out_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t == 1, 
+    true = 1, 
+    false = 1 - 2^(-10 * t) * sin((10 * t + 0.75) * 2 * pi / 3)
+  ), 
+  easing_fnc = "elastic-out"
+)
+
+# Elastic-inout:(未完)
+elastic_inout_df <- tibble::tibble(
   t = t_vec, 
   y = dplyr::case_when(
     t == 0 ~ 0, 
     t == 1 ~ 1, 
-    TRUE ~ 2^(-10*t) * sin((t * 10 - 0.75) * 2 * pi / 3) + 1
+    t < 0.5 ~ -2^(20 * t - 11) * sin((20 * t - 10.75) * 2 * pi / 3), 
+    t >= 0.5 ~ 1 + 2^(-20 * t + 9) * sin((20 * t - 9.25) * 2 * pi / 3)
   ), 
-  easing_fnc = "elastic-out"
+  easing_fnc = "elastic-in-out"
+)
+
+# Elastic-in関数を作成
+f_in <- function(t) {
+  return(
+    -2^(10 * t - 10) * sin((10 * t - 10.75) * 2 * pi / 3)
+  )
+}
+
+# Elastic-in関数を作成
+f_out <- function(t) {
+  return(
+    1 - 2^(-10 * t) * sin((10 * t + 0.75) * 2 * pi / 3)
+  )
+}
+
+# Elastic-inout
+elastic_inout_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::case_when(
+    t == 0 ~ 0, 
+    t == 1 ~ 1, 
+    t < 0.5 ~ f_in(2 * t) * 0.5, 
+    t >= 0.5 ~ (f_out(2 * t - 1) + 1) * 0.5
+  ), 
+  easing_fnc = "elastic-in-out"
+)
+
+
+### ・bounce -----
+
+# Bounce-out関数を作成
+f_out <- function(t_vec) {
+  # 定数を設定
+  c1 <- 7.5625
+  c2 <- 2.75
+  
+  # 受け皿を作成
+  y_vec <- rep(NA, times = length(t_vec))
+  
+  # 要素ごとに関数を計算
+  for(i in seq_along(t_vec)) {
+    # i番目の要素を取得
+    t <- t_vec[i]
+    
+    # 定義式を計算
+    if(t < 1 / c2) {
+      y_vec[i] <- c1 * t^2
+    } else if(t < 2 / c2) {
+      y_vec[i] <- c1 * (t - 1.5 / c2)^2 + 0.75
+    } else if(t < 2.5 / c2) {
+      y_vec[i] <- c1 * (t - 2.25 / c2)^2 + 0.9375
+    } else {
+      y_vec[i] <- c1 * (t - 2.625 / c2)^2 + 0.984375
+    }
+  }
+  
+  # 出力
+  return(y_vec)
+}
+
+# Bounce-in
+bounce_in_df <- tibble::tibble(
+  t = t_vec, 
+  y = 1 - f_out(1 - t), 
+  easing_fnc = "bounce-in"
+)
+
+# Bounce-out
+bounce_out_df <- tibble::tibble(
+  t = t_vec, 
+  y = f_out(t), 
+  easing_fnc = "bounce-out"
+)
+
+# Bounce-inout
+bounce_inout_df <- tibble::tibble(
+  t = t_vec, 
+  y = dplyr::if_else(
+    condition = t < 0.5, 
+    true = (1 - f_out(1 - 2 * t)) * 0.5, 
+    false = (1 + f_out(2 * t - 1)) * 0.5
+  ), 
+  easing_fnc = "bounce-in-out"
 )
 
 
 ### ・イージング関数の可視化 -----
 
 # イージング関数を指定
-point_df <- quad_inout_df
+point_df <- elastic_inout_df
 
 # イージング曲線用のデータフレームを作成
 line_df <- point_df %>% 
@@ -278,7 +437,7 @@ anim <- ggplot(point_df, aes(x = t, y = y)) +
        x = "time", y = expression(f(t)))
 
 # gif画像を作成
-gganimate::animate(plot = anim, nframes = 50, fps = 20)
+gganimate::animate(plot = anim, nframes = 101, fps = 50)
 
 
 # 比較対象の設定 -----------------------------------------------------------------
@@ -327,7 +486,29 @@ easing_df <- rbind(
     easing_fnc = factor(easing_fnc, level = c("linear", "quint-in", "quint-out", "quint-in-out"))
   ) # 因子型に変換
 
-# Qircular関数を結合
+# Exponential関数を結合
+easing_df <- rbind(
+  linear_df, 
+  expo_in_df, 
+  expo_out_df, 
+  expo_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "expo-in", "expo-out", "expo-in-out"))
+  ) # 因子型に変換
+
+# Sine関数を結合
+easing_df <- rbind(
+  linear_df, 
+  sine_in_df, 
+  sine_out_df, 
+  sine_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "sine-in", "sine-out", "sine-in-out"))
+  ) # 因子型に変換
+
+# Circular関数を結合
 easing_df <- rbind(
   linear_df, 
   circ_in_df, 
@@ -337,6 +518,40 @@ easing_df <- rbind(
   dplyr::mutate(
     easing_fnc = factor(easing_fnc, level = c("linear", "circ-in", "circ-out", "circ-in-out"))
   ) # 因子型に変換
+
+# Back関数を結合
+easing_df <- rbind(
+  linear_df, 
+  back_in_df, 
+  back_out_df, 
+  back_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "back-in", "back-out", "back-in-out"))
+  ) # 因子型に変換
+
+# Elastic関数を結合
+easing_df <- rbind(
+  linear_df, 
+  elastic_in_df, 
+  elastic_out_df, 
+  elastic_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "elastic-in", "elastic-out", "elastic-in-out"))
+  ) # 因子型に変換
+
+# Bounce関数を結合
+easing_df <- rbind(
+  linear_df, 
+  bounce_in_df, 
+  bounce_out_df, 
+  bounce_inout_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(easing_fnc, level = c("linear", "bounce-in", "bounce-out", "bounce-in-out"))
+  ) # 因子型に変換
+
 
 # Inタイプの関数を結合
 easing_df <- rbind(
@@ -357,10 +572,22 @@ easing_df <- rbind(
   cubic_inout_df, 
   quart_inout_df, 
   quint_inout_df, 
-  expo_inout_df
+  expo_inout_df, 
+  sine_inout_df, 
+  circ_inout_df, 
+  back_inout_df, 
+  elastic_inout_df, 
+  bounce_inout_df
 ) %>% 
   dplyr::mutate(
-    easing_fnc = factor(easing_fnc, level = c("linear", "quad-in-out", "cubic-in-out", "quart-in-out", "quint-in-out", "expo-in-out"))
+    easing_fnc = factor(
+      easing_fnc, 
+      level = c(
+        "linear", 
+        paste0(
+          c("quad", "cubic", "quart", "quint", "expo", "sine", "circ", "back", "elastic", "bounce"), "-in-out")
+      )
+    )
   ) # 因子型に変換
 
 unique(easing_df[["easing_fnc"]])
@@ -402,15 +629,27 @@ anim <- ggplot(easing_df, aes(x = t, y = y, color = easing_fnc)) +
        x = "time", y = expression(f(t))) # ラベル
 
 # gif画像を作成
-gganimate::animate(plot = anim, nframes = 60, fps = 20, width = 600, height = 600)
+g <- gganimate::animate(plot = anim, nframes = length(t_vec), fps = 50, width = 600, height = 600)
+
+# gif画像を保存
+gganimate::anim_save(filename = "output/Easing/_line.gif", animation = g)
+
+
+# 動画を作成
+m <- gganimate::animate(plot = anim, nframes = length(t_vec), fps = 30, width = 600, height = 600, renderer = gganimate::av_renderer())
+
+# 動画を保存
+gganimate::anim_save(filename = "output/Easing/_line.mp4", animation = m)
 
 
 # イージング処理を作図
 anim <- ggplot() + 
   geom_tile(data = bar_df, mapping = aes(x = x, y = y/2, height = y, fill = easing_fnc), 
            alpha = 0.7, width = 0.9/fnc_size) + # イージングバー
+  #geom_text(data = bar_df, mapping = aes(x = x, y = 0, label = easing_fnc, color = easing_fnc), 
+  #          vjust = 1) + # 関数名:(横向き)
   geom_text(data = bar_df, mapping = aes(x = x, y = 0, label = easing_fnc, color = easing_fnc), 
-            vjust = 1) + # 関数名
+            hjust = 1, angle = 90) + # 関数名:()
   geom_hline(data = easing_df, mapping = aes(yintercept = y, color = easing_fnc), 
              linetype = "dashed") + # 変化量の線
   geom_line(data = line_df, mapping = aes(x = x, y = y, color = easing_fnc)) + # イージング曲線
@@ -426,14 +665,17 @@ anim <- ggplot() +
        x = "time", y = expression(f(x))) # ラベル
 
 # gif画像を作成
-gganimate::animate(plot = anim, nframes = 50, fps = 50, width = 600, height = 600)
+g <- gganimate::animate(plot = anim, nframes = length(t_vec), fps = 50, width = 600, height = 600)
+
+# gif画像を保存
+gganimate::anim_save(filename = "output/Easing/_bar.gif", animation = g)
 
 
 # 動画を作成
-m <- gganimate::animate(plot = anim, nframes = 60, fps = 20, width = 600, height = 600, renderer = gganimate::av_renderer())
+m <- gganimate::animate(plot = anim, nframes = length(t_vec), fps = 30, width = 600, height = 600, renderer = gganimate::av_renderer())
 
 # 動画を保存
-gganimate::anim_save(filename = "output/Easing/Cubic.mp4", animation = m)
+gganimate::anim_save(filename = "output/Easing/_bar.mp4", animation = m)
 
 
 # 点の移動による可視化と比較 ---------------------------------------------------------
@@ -482,12 +724,15 @@ anim <- ggplot(point_df, aes(x = x, y = y, color = easing_fnc)) +
   #scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
   #scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
   coord_flip() + # 軸の入れ替え
-  labs(title = "Cubic Easing Function", 
+  labs(title = "Easing Functions", 
        subtitle = "t = {current_frame}", 
        x = "Easing Function", y = expression(f(t)))
 
 # gif画像を作成
-gganimate::animate(plot = anim, nframes = length(t_vec)+10, fps = 10, end_pause = 10)
+g <- gganimate::animate(plot = anim, nframes = length(t_vec)+10, fps = 10, end_pause = 10, width = 600, height = 600)
+
+# gif画像を保存
+gganimate::anim_save(filename = "output/Easing/_point.gif", animation = g)
 
 
 # 動画を作成
