@@ -559,10 +559,42 @@ easing_df <- rbind(
   quad_in_df, 
   cubic_in_df, 
   quart_in_df, 
-  quint_in_df
+  quint_in_df, 
+  expo_in_df, 
+  sine_in_df, 
+  circ_in_df, 
+  back_in_df, 
+  elastic_in_df, 
+  bounce_in_df
 ) %>% 
   dplyr::mutate(
-    easing_fnc = factor(easing_fnc, level = c("linear", "quad-in", "cubic-in", "quart-in", "quint-in"))
+    easing_fnc = factor(
+      easing_fnc, 
+      level = c(
+        "linear", paste0(c("quad", "cubic", "quart", "quint", "expo", "sine", "circ", "back", "elastic", "bounce"), "-in"))
+    )
+  ) # 因子型に変換
+
+# Outタイプの関数を結合
+easing_df <- rbind(
+  linear_df, 
+  quad_out_df, 
+  cubic_out_df, 
+  quart_out_df, 
+  quoutt_out_df, 
+  expo_out_df, 
+  sine_out_df, 
+  circ_out_df, 
+  back_out_df, 
+  elastic_out_df, 
+  bounce_out_df
+) %>% 
+  dplyr::mutate(
+    easing_fnc = factor(
+      easing_fnc, 
+      level = c(
+        "linear", paste0(c("quad", "cubic", "quart", "quint", "expo", "sine", "circ", "back", "elastic", "bounce"), "-out"))
+    )
   ) # 因子型に変換
 
 # InOutタイプの関数を結合
@@ -583,10 +615,7 @@ easing_df <- rbind(
     easing_fnc = factor(
       easing_fnc, 
       level = c(
-        "linear", 
-        paste0(
-          c("quad", "cubic", "quart", "quint", "expo", "sine", "circ", "back", "elastic", "bounce"), "-in-out")
-      )
+        "linear", paste0(c("quad", "cubic", "quart", "quint", "expo", "sine", "circ", "back", "elastic", "bounce"), "-in-out"))
     )
   ) # 因子型に変換
 
@@ -621,7 +650,7 @@ anim <- ggplot(easing_df, aes(x = t, y = y, color = easing_fnc)) +
   geom_point(mapping = aes(y = 0), color = "pink", size = 5) + 
   geom_point(size = 5) + # イージング曲線上の点
   gganimate::transition_reveal(along = t) + # フレーム
-  #scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
+  scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
   coord_fixed(ratio = 1) + # アスペクト比
   labs(title = "Easing Functions", 
        subtitle = "t = {round(frame_along, 2)}", 
@@ -646,18 +675,18 @@ gganimate::anim_save(filename = "output/Easing/_line.mp4", animation = m)
 anim <- ggplot() + 
   geom_tile(data = bar_df, mapping = aes(x = x, y = y/2, height = y, fill = easing_fnc), 
            alpha = 0.7, width = 0.9/fnc_size) + # イージングバー
-  #geom_text(data = bar_df, mapping = aes(x = x, y = 0, label = easing_fnc, color = easing_fnc), 
-  #          vjust = 1) + # 関数名:(横向き)
   geom_text(data = bar_df, mapping = aes(x = x, y = 0, label = easing_fnc, color = easing_fnc), 
-            hjust = 1, angle = 90) + # 関数名:()
+            vjust = 1) + # 関数名:(横向き)
+  #geom_text(data = bar_df, mapping = aes(x = x, y = 0, label = easing_fnc, color = easing_fnc), 
+  #          hjust = 1, angle = 90) + # 関数名:()
   geom_hline(data = easing_df, mapping = aes(yintercept = y, color = easing_fnc), 
              linetype = "dashed") + # 変化量の線
   geom_line(data = line_df, mapping = aes(x = x, y = y, color = easing_fnc)) + # イージング曲線
   geom_point(data = easing_df, mapping = aes(x = t, y = y, color = easing_fnc), 
              alpha = 0.5, size = 5) + # イージング曲線上の点
   gganimate::transition_reveal(along = t) + # フレーム
-  #scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
-  #scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # バーの色:(不必要)
+  scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
+  scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # バーの色:(不必要)
   coord_fixed(ratio = 1) + # アスペクト比
   labs(title = "Easing Functions", 
        subtitle = "t = {round(frame_along, 2)}", 
@@ -721,8 +750,8 @@ anim <- ggplot(point_df, aes(x = x, y = y, color = easing_fnc)) +
              size = 5, alpha = 0.2, show.legend = FALSE) + # 点の軌跡
   gganimate::transition_manual(frame = frame) + # フレーム
   scale_x_reverse(breaks = unique(point_df[["x"]]), labels = unique(point_df[["easing_fnc"]]), minor_breaks = FALSE) + # x軸目盛の反転
-  #scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
-  #scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
+  scale_color_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
+  scale_fill_manual(values = c("red", "limegreen", "orange", "mediumblue")) + # 点と線の色:(不必要)
   coord_flip() + # 軸の入れ替え
   labs(title = "Easing Functions", 
        subtitle = "t = {current_frame}", 
