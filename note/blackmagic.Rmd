@@ -1,0 +1,424 @@
+---
+title: "黒魔術シリーズ"
+author: "@anemptyarchive\\thanks{\\url{https://www.anarchive-beta.com/}}"
+date: "`r format(Sys.time(), '%Y-%m-%d %H:%M:%S')`"
+output: 
+  html_document: 
+    toc: TRUE       # 目次
+    toc_depth: 3    # 目次の見出しレベル
+    toc_float: TRUE # 目次のスクロール追跡
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, 
+  message = FALSE, error = FALSE, warning = FALSE # メッセージを非表示
+)
+```
+
+----
+
+【編集履歴】
+
+- 2022.09.14：「等高線を動かす」を追加
+
+----
+
+
+# 任意の値で等高線を動かしたい
+
+　`geom_contour()`を使って等高線図のアニメーションを作成する際に、フレームごとに等高線を引く値を変更したい。しかし、`breaks`引数は`aes()`の中で設定できないのでデータフレームの列を使うなどの方法をとれず、全てのフレームで共通の値になる。\
+　そこで、スマートではない方法(黒魔術)を使ってなんとかする(スマートな方法があればぜひ教えてください)。\
+
+　この記事では、2次元ガウス分布を例とする。作図処理についての詳細は「2次元ガウス分布の作図」を参照のこと。\
+\
+
+　次のパッケージを利用する。
+
+```{r, eval=FALSE}
+# 利用パッケージ
+library(tidyverse)
+library(mvnfast)
+```
+
+```{r, echo=FALSE}
+### 資料作成用:(チェック)
+
+# チェック用
+library(ggplot2)
+```
+
+　基本的に`パッケージ名::関数名()`の記法を使うので、パッケージを読み込む必要はない。ただし、作図コードがごちゃごちゃしないようにパッケージ名を省略しているので、`ggplot2`を読み込む必要がある。\
+　また、`magrittr`パッケージのパイプ演算子`%>%`ではなく、ネイティブパイプ演算子`|>`を使っている。`%>%`に置き換えても処理できるが、その場合は`magrittr`を読み込む必要がある。\
+\
+
+
+## 等高線図の作成
+
+　まずは、静止画の等高線図の作成方法を確認しておく。\
+\
+
+　2次元ガウス分布の確率変数の点を作成する。
+
+```{r}
+# x軸とy軸の値を作成
+x_vals <- seq(from = -3, to = 3, length.out = 301) |> 
+  round(digits = 2)
+
+# 格子点を作成
+x_mat <- tidyr::expand_grid(
+  x1 = x_vals, 
+  x2 = x_vals
+) |> # 全ての組み合わせを作成
+  as.matrix() # マトリクスに変換
+head(x_mat)
+```
+
+　簡単な例として、x軸とy軸で同じ値`x_vals`を使う。グラフが粗い場合や処理が重い場合は、`x_vals`の間隔(`by`引数)や要素数(`length.out`引数)を調整する。\
+　格子状の点(`x_vec`の要素の全ての組み合わせ)を`expand_grid()`で作成する。`geom_contour()`を使う場合は、格子点(x軸とy軸の値が直交する点)を用意する必要がある。\
+
+　2次元ガウス分布のパラメータを設定する。
+
+```{r}
+# 次元数を設定:(固定)
+D <- 2
+
+# 平均ベクトルを指定
+mu_d <- rep(0, times = D)
+
+# 分散共分散行列を指定
+sigma_dd <- diag(D) # 単位行列
+```
+
+　要素数`2`のベクトル`mu_d`と、`2`行`2`列のマトリクス`sigma_dd`に値を指定する。\
+
+　2次元ガウス分布の確率密度を計算する。
+
+```{r}
+# ガウス分布を計算
+dens_df <- tibble::tibble(
+  x1 = x_mat[, 1], # x軸の値
+  x2 = x_mat[, 2], # y軸の値
+  dens = mvnfast::dmvn(X = x_mat, mu = mu_d, sigma = sigma_dd) # 確率密度
+)
+dens_df
+```
+
+　`mvnfast`パッケージの`dmvn()`を使って、`x_mat`の行ごとに確率密度を計算する。\
+
+　2次元ガウス分布の等高線図を作成する。
+
+```{r, fig.width=8, fig.height=8}
+# 等高線図を作成
+ggplot() + 
+  geom_contour(data = dens_df, mapping = aes(x = x1, y = x2, z = dens, color = ..level..)) + # 等高線
+  coord_fixed(ratio = 1, xlim = c(min(x_vals), max(x_vals)), ylim = c(min(x_vals), max(x_vals))) + # アスペクト比
+  labs(x = expression(x[1]), y = expression(x[2]))
+```
+
+　`geom_contour()`で等高線図を描画できる。\
+\
+
+　等高線図の基本形を作成できた。続いて、等高線を引く位置を指定する。\
+
+　`geom_contour()`の`breaks`引数に、等高線を引く値を指定できる。
+
+```{r, fig.width=8, fig.height=8}
+# 等高線を引く値を指定
+breaks_vals <- seq(from = 0, to = 0.1, by = 0.01)
+
+# 値を指定して等高線図を作成
+ggplot() + # 等高線
+  geom_contour(data = dens_df, mapping = aes(x = x1, y = x2, z = dens, color = ..level..), 
+               breaks = breaks_vals) + # 等高線
+  coord_fixed(ratio = 1, xlim = c(min(x_vals), max(x_vals)), ylim = c(min(x_vals), max(x_vals))) + # アスペクト比
+  labs(x = expression(x[1]), y = expression(x[2]))
+```
+
+　一定の間隔の確率密度で等高線を引いた
+
+　同様に、確率密度の最大値の`0.5`倍の値で線を引く。
+
+```{r, fig.width=8, fig.height=8}
+# 倍率を指定
+rate <- 0.5
+
+# 確率密度の最大値を計算
+max_dens <- mvnfast::dmvn(X = mu_d, mu = mu_d, sigma = sigma_dd)
+
+# 値を指定して等高線図を作成
+ggplot() + 
+  geom_contour(data = dens_df, mapping = aes(x = x1, y = x2, z = dens, color = ..level..), 
+               breaks = max_dens*rate) + # 等高線
+  coord_fixed(ratio = 1, xlim = c(min(x_vals), max(x_vals)), ylim = c(min(x_vals), max(x_vals))) + # アスペクト比
+  labs(x = expression(x[1]), y = expression(x[2]))
+```
+
+　確率密度が次の値の点を結んだ等高線が引かれた。
+
+```{r}
+# 値を確認
+max_dens * rate
+```
+
+　次からは、この線を動かすことを考える。\
+\
+
+
+## 等高線図のアニメーションを作成
+
+　では、等高線図のアニメーションの作成方法を確認する。例として、共分散(分散共分散行列の対角要素(分散)以外の要素)が変化したときの、2次元ガウス分布のアニメーションを作成する。\
+\
+
+　分散共分散行列の各要素の値を設定する。
+
+```{r}
+# x軸の分散を指定
+sigma2_1 <- 1
+
+# y軸の分散を指定
+sigma2_2 <- 1
+
+# 共分散として利用する値を指定
+sigma_12_vals <- seq(from = -0.8, to = 0.8, by = 0.1) |> 
+  round(digits = 1)
+```
+
+　分散を`sigma2_1, sigma2_2`として値を指定する。共分散を`sigma_12_vals`として一定の間隔の値を指定する。\
+
+　共分散の値ごとに、2次元ガウス分布の確率密度を計算する。
+
+```{r}
+# 共分散の値ごとにガウス分布を計算
+anime_dens_df <- tidyr::expand_grid(
+  sigma_12 = sigma_12_vals, # 共分散
+  x1 = x_vals, # x軸の値
+  x2 = x_vals  # y軸の値
+) |> # 格子点を複製
+  dplyr::group_by(sigma_12) |> # 分布の計算用にグループ化
+  dplyr::mutate(
+    dens = mvnfast::dmvn(
+      X = x_mat, 
+      mu = mu_d, 
+      sigma = matrix(c(sigma2_1, unique(sigma_12), unique(sigma_12), sigma2_2), nrow = D, ncol = D)
+    ) # 確率密度
+  ) |> 
+  dplyr::ungroup() # グループ化を解除
+anime_dens_df
+```
+
+　詳しくは冒頭にリンクした記事を参照のこと。\
+
+　共分散の値ごとに、2次元ガウス分布のグラフを描画するアニメーション(gif画像)を作成する。
+
+```{r}
+# 等高線図のアニメーションを作成
+anime_graph <- ggplot() + 
+  geom_contour(data = anime_dens_df, mapping = aes(x = x1, y = x2, z = dens, color = ..level..)) + # 等高線
+  gganimate::transition_manual(sigma_12) + # フレーム
+  coord_fixed(ratio = 1, xlim = c(min(x_vals), max(x_vals)), ylim = c(min(x_vals), max(x_vals))) + # アスペクト比
+  labs(title = paste0("covariance = ", "{current_frame}"), 
+       x = expression(x[1]), y = expression(x[2]))
+
+# gif画像を作成
+gganimate::animate(
+  plot = anime_graph, nframes = length(sigma_12_vals), fps = 10, 
+  width = 800, height = 800
+)
+```
+
+　`gganimate`パッケージの`transition_manual()`にフレームを制御する列を指定して、`animate()`でgif画像に変換する。この例では、`sigma_12_vals`の値ごとにフレーム(グラフ)を切り替えるので、フレーム数は`sigma_12_vals`の要素数になる。\
+\
+
+　等高線図のアニメーションの基本形を作成できた。続いて、等高線を引く位置を指定する。\
+
+　`geom_contour()`の`breaks`引数に、「全ての共分散(フレーム)において最大の確率密度」の`0.5`倍の値で線を引いてみる。
+
+```{r}
+# 倍率を指定
+rate <- 0.5
+
+# 確率密度の最大値を計算
+max_dens <- mvnfast::dmvn(
+  X = mu_d, 
+  mu = mu_d, 
+  sigma = matrix(c(sigma2_1, max(sigma_12_vals), max(sigma_12_vals), sigma2_2), nrow = D, ncol = D)
+)
+
+# 値を指定して等高線図のアニメーションを作成
+anime_graph <- ggplot() + 
+  geom_contour(data = anime_dens_df, mapping = aes(x = x1, y = x2, z = dens, color = ..level..), 
+               breaks = max_dens*rate) + # 等高線
+  gganimate::transition_manual(sigma_12) + # フレーム
+  coord_fixed(ratio = 1, xlim = c(min(x_vals), max(x_vals)), ylim = c(min(x_vals), max(x_vals))) + # アスペクト比
+  labs(title = "covariance = {current_frame}", 
+       x = expression(x[1]), y = expression(x[2]))
+
+# gif画像を作成
+gganimate::animate(
+  plot = anime_graph, nframes = length(sigma_12_vals), fps = 10, 
+  width = 800, height = 800
+)
+```
+
+　今回の設定だと、`sigma_12_vals`の最小値または最大値のとき確率密度が最大になる。各分布(フレーム)で共通して、次の値で等高線を引いた。
+
+```{r}
+# 値を確認
+max_dens * rate
+```
+
+\ 
+
+　`sigma_12_vals`ごとに確率密度の最大値が変化するので、各分布の最大値に対して、指定した倍率の値で等高線を引くことを考える。\
+
+　指定した倍率を超える確率密度を指定した倍率の値に変更することで、分布の断面のデータフレームを作成する。
+
+```{r}
+# 倍率を指定
+rate <- 0.5
+
+# ガウス分布の断面を計算
+anime_ellipse_df <- anime_dens_df |> 
+  dplyr::group_by(sigma_12) |> # 断面の計算用にグループ化
+  dplyr::mutate(
+    max_dens = mvnfast::dmvn(
+      X = mu_d, 
+      mu = mu_d, 
+      sigma = matrix(c(sigma2_1, unique(sigma_12), unique(sigma_12), sigma2_2), nrow = D, ncol = D)
+    ), # 確率密度の最大値
+    dens = dplyr::if_else(
+      dens >= max_dens * rate, 
+      true = max_dens * rate,  
+      false = 0 # (true引数の値から離れた値を設定)
+    ) # 断面を作成
+  ) |> 
+  dplyr::ungroup() # グループ化を解除
+anime_ellipse_df
+```
+
+　共分散(`sigma_12_vals`)の値ごとに、確率密度の最大値を計算して`max_dens`列とする。\
+　`if_else`を使って、各点の確率密度(`dens`列)が`max_dens * rate`以下であれば、値を`max_dens * rate`に変更する。\
+
+　共分散の値ごとに、「各分布(フレーム)の確率密度の最大値」の`0.5`倍の等高線のアニメーションを作成する。
+
+```{r}
+# 値を指定して等高線図のアニメーションを作成
+anime_graph <- ggplot() + 
+  geom_contour(data = anime_ellipse_df, mapping = aes(x = x1, y = x2, z = dens, color = ..level..), 
+               bins = 2) + # 等高線
+  gganimate::transition_manual(sigma_12) + # フレーム
+  coord_fixed(ratio = 1, xlim = c(min(x_vals), max(x_vals)), ylim = c(min(x_vals), max(x_vals))) + # アスペクト比
+  labs(title = "covariance = {current_frame}", 
+       x = expression(x[1]), y = expression(x[2]))
+
+# gif画像を作成
+gganimate::animate(
+  plot = anime_graph, nframes = length(sigma_12_vals), fps = 10, 
+  width = 800, height = 800
+)
+```
+
+　目的の等高線図が得られた。(線がガタガタしているのは見逃す。)\
+\
+
+　上のやり方だと、線と無関係な点の情報(行)を持ち、メモリ効率が割る過ぎるので、散布図で代用してみる。\
+
+　等高線として描画する点を抽出する。
+
+```{r}
+# 閾値を指定
+threshold <- 0.001
+
+# 等高線の点を抽出
+anime_point_df <- anime_dens_df |> 
+  dplyr::group_by(sigma_12) |> # 点の抽出用にグループ化
+  dplyr::mutate(
+    max_dens = mvnfast::dmvn(
+      X = mu_d, 
+      mu = mu_d, 
+      sigma = matrix(c(sigma2_1, unique(sigma_12), unique(sigma_12), sigma2_2), nrow = D, ncol = D)
+    ) # 確率密度の最大値
+  ) |> 
+  dplyr::ungroup() |> # グループ化を解除
+  dplyr::filter(abs(dens - max_dens*rate) <= threshold) # 等高線の点を抽出
+anime_point_df
+```
+
+　共分散(`sigma_12_vals`)の値ごとに、各点の確率密度(`dens`列)と`max_dens * rate`の差が閾値`threshold`以下の点(行)を抽出する。\
+
+　散布図によって等高線を描画する。
+
+```{r}
+# 散布図による等高線のアニメーションを作成
+anime_graph <- ggplot() + 
+  geom_point(data = anime_point_df, mapping = aes(x = x1, y = x2, color = dens), 
+             size = 2) + # 散布図
+  gganimate::transition_manual(sigma_12) + # フレーム
+  coord_fixed(ratio = 1, xlim = c(min(x_vals), max(x_vals)), ylim = c(min(x_vals), max(x_vals))) + # アスペクト比
+  labs(title = "covariance = {current_frame}", 
+       color = "density", 
+       x = expression(x[1]), y = expression(x[2]))
+
+# gif画像を作成
+gganimate::animate(
+  plot = anime_graph, nframes = length(sigma_12_vals), fps = 10, 
+  width = 800, height = 800
+)
+```
+
+　綺麗な線にならない場合は、`x_vals`の間隔や`threshold`の値を調整するか、`geom_point()`の`size`や`shape`で調整する。\
+\
+
+
+## 完成例
+
+　最後に、それっぽいアニメーションを作成する。\
+\
+
+　等高線を引く値を表示する用の文字列を作成する。
+
+```{r}
+# 等高線の値のラベルを作成
+anime_label_df <- anime_ellipse_df |> 
+  dplyr::distinct(sigma_12, max_dens) |> # 各共分散と確率密度の最大値を抽出
+  dplyr::mutate(
+    dens_label = paste0(
+      "max density     : ", round(max_dens, digits = 5), "\n",
+      "drawn density : ", round(max_dens * rate, digits = 5)
+    )
+  ) # ラベルを作成
+anime_label_df
+```
+
+　`anime_ellipse_df`は全ての点の情報(`x_mat`に対応する行)を持つので、`distinct()`で重複を削除して、`sigma_12_vals`の値ごとに確率密度の最大値(`max_dens`列)と等高線を引く値(`max_dens * rate`)を文字列結合する。\
+
+　分布全体の塗りつぶし等高線図に、指定した倍率の等高線を重ねて描画する。
+
+```{r}
+# 2次元ガウス分布の等高線図のアニメーションを作成
+anime_graph <- ggplot() + 
+  geom_contour_filled(data = anime_dens_df, mapping = aes(x = x1, y = x2, z = dens, fill = ..level..), 
+                      alpha = 0.8) + # 塗りつぶし等高線
+  geom_contour(data = anime_ellipse_df, mapping = aes(x = x1, y = x2, z = dens, color = ..level..), 
+               bins = 2, color = "red", size = 1, linetype = "dashed") + # 等高線
+  geom_label(data = anime_label_df, mapping = aes(x = min(x_vals), y = max(x_vals), label = dens_label), 
+             hjust = "inward", vjust = "inward", color = "red") + # 等高線ラベル
+  gganimate::transition_manual(sigma_12) + # フレーム
+  coord_fixed(ratio = 1) + # アスペクト比
+  labs(title = "Bivariate Normal Distribution", 
+       subtitle = "covariance = {current_frame}", 
+       fill = "density", 
+       x = expression(x[1]), y = expression(x[2]))
+
+# gif画像を作成
+gganimate::animate(
+  plot = anime_graph, nframes = length(sigma_12_vals), fps = 10, 
+  width = 800, height = 800
+)
+```
+
+　山の半分の高さっぽいところで線を引けているのが分かる。\
+
+　以上で、私が欲しかった図が得られた。\
+\
