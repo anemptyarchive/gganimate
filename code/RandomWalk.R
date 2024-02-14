@@ -5,323 +5,315 @@
 library(gganimate)
 library(tidyverse)
 
+# パッケージ名の省略用
+library(ggplot2)
+
 
 # 1次元ランダムウォーク ----------------------------------------------------------------
 
-### ・1サンプル -----
-
 # 試行回数を指定
-max_iter <- 100
-
-# ランダムに値を生成
-random_vec <- sample(x = c(-1, 1), size = max_iter, replace = TRUE)
-
-# 試行ごとに集計
-random_df <- tibble::tibble(
-  iteration = 0:max_iter, 
-  random_val = c(0, random_vec)
-) %>% 
-  dplyr::mutate(value = cumsum(random_val)) # 各試行までの合計
-
-# 1次元ランダムウォークを作図
-anim <- ggplot(random_df, aes(x = iteration, y = value)) + 
-  geom_point(color = "hotpink", size = 5) + # 散布図
-  geom_path(color = "hotpink", size = 1, alpha = 0.5) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
-  gganimate::transition_reveal(along = iteration) + # フレーム
-  labs(title = "Random Walk", 
-       subtitle = "iter : {frame_along}")
-
-# gif画像を作成
-gganimate::animate(plot = anim, nframes = max_iter+1, fps = 10)
-
-
-### ・複数サンプル -----
-
-# 試行回数を指定
-max_iter <- 100
+max_iter <- 600
 
 # サンプルサイズを指定
-sample_size <- 10
+sample_size <- 12
 
-# ランダムに値を生成
-random_vec <-  sample(x = c(-1, 1), size = max_iter*sample_size, replace = TRUE)
+# 乱数の生成と集計
+trace_df <- tibble::tibble(
+  id =  factor(1:sample_size) # サンプル番号
+) |> 
+  dplyr::reframe(
+    iter = 0:max_iter, # 試行番号
+    r    = c(0, sample(x = c(-1, 1), size = max_iter, replace = TRUE)), # 初期値0, 乱数±1
+    .by = id
+  ) |> # 移動量を生成
+  dplyr::mutate(
+    y = cumsum(r), .by = id
+  )  # 総移動量を計算
 
-# 試行ごとに集計
-random_df <- tibble::tibble(
-  iteration = rep(0:max_iter, each = sample_size), 
-  id = rep(1:sample_size, times = max_iter+1) %>% 
-    as.factor(), 
-  random_val = c(rep(0, sample_size), random_vec)
-) %>% 
-  dplyr::group_by(id) %>% # サンプルごとにグループ化
-  dplyr::mutate(value = cumsum(random_val)) %>% # 各試行までの合計
-  dplyr::group_by() # グループ化の解除
 
-# 2次元ランダムウォークを作図
-anim <- ggplot(random_df, aes(x = iteration, y = value, color = id)) + 
-  geom_point(size = 5, show.legend = FALSE) + # 散布図
-  geom_path(size = 1, alpha = 0.5, show.legend = FALSE) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
-  gganimate::transition_reveal(along = iteration) + # フレーム
+# グラフサイズを設定
+axis_size <- trace_df[["y"]] |> 
+  abs() |> 
+  max()
+
+
+# 最終結果を抽出
+res_df <- trace_df |> 
+  dplyr::filter(iter == max_iter)
+
+# 1次元ランダムウォークを作図
+graph <- ggplot() + 
+  geom_path(data = trace_df, mapping = aes(x = iter, y = y, color = id), 
+            size = 1, alpha = 0.3) + # 軌跡
+  geom_point(data = res_df, 
+             mapping = aes(x = iter, y = y, color = id), 
+             size = 4) + # 最終地点
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 初期値
+  guides(color = "none") + 
+  coord_cartesian(ylim = c(-axis_size, axis_size)) + # 描画範囲
   labs(title = "Random Walk", 
-       subtitle = "iter : {frame_along}")
+       subtitle = paste("iteration:", max_iter), 
+       x = "iteration", y = "y")
+graph
 
-# gif画像を作成
-gganimate::animate(plot = anim, nframes = max_iter+1, fps = 10)
+# グラフを書出
+ggplot2::ggsave(
+  plot = graph, filename = "output/RandomWalk/1d.png", 
+  width = 12, height = 9, units = "in", dpi = 250
+)
 
 
-# 最終結果
-random_df %>% 
-  dplyr::filter(iteration == max_iter) %>% 
-  ggplot() + 
-  geom_point(mapping = aes(x = iteration, y = value, color = id), 
-             size = 5, show.legend = FALSE) + # 散布図
-  geom_path(data = random_df, mapping = aes(x = iteration, y = value, color = id), 
-            size = 1, alpha = 0.5, show.legend = FALSE) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
+# 1次元ランダムウォークのアニメーションを作図
+anim <- ggplot() + 
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 初期値
+  geom_path(data = trace_df, 
+            mapping = aes(x = iter, y = y, color = id), 
+            size = 1, alpha = 0.3) + # 軌跡
+  geom_point(data = trace_df, 
+             mapping = aes(x = iter, y = y, color = id), 
+             size = 4) + # 現在地点
+  gganimate::transition_reveal(along = iter) + # フレーム切替
+  guides(color = "none") + 
+  coord_cartesian(ylim = c(-axis_size, axis_size)) + # 描画範囲
   labs(title = "Random Walk", 
-       subtitle = paste0("iter : ", max_iter))
+       subtitle = "iteration: {frame_along}", 
+       x = "iteration", y = "y")
+
+# mp4動画を作成
+gganimate::animate(
+  plot = anim, nframes = max_iter+1, fps = 10, 
+  width = 12, height = 9, units = "in", res = 250, 
+  renderer = gganimate::av_renderer(file = "output/RandomWalk/1d.mp4")
+)
 
 
 # 2次元ランダムウォーク：2方向移動 -------------------------------------------------------------
 
-### ・1サンプル -----
-
 # 試行回数を指定
-max_iter <- 100
-
-# ランダムに値を生成
-random_val_vec <- sample(c(-1, 1), size = max_iter, replace = TRUE)
-
-# ランダムに軸を生成
-random_axis_vec <- sample(c("x", "y"), size = max_iter, replace = TRUE)
-
-# 試行ごとに集計
-random_df <- tibble::tibble(
-  iteration = c(0, 0, 1:max_iter), 
-  random_val = c(0, 0, random_val_vec), 
-  axis = c("x", "y", random_axis_vec)
-) %>% 
-  tidyr::pivot_wider(
-    names_from = axis, 
-    values_from = random_val, 
-    values_fill = 0
-  ) %>% # 横型に変形
-  dplyr::mutate(
-    x = cumsum(x), 
-    y = cumsum(y)
-  ) # 各試行までの合計
-
-# 2次元ランダムウォークを作図
-anim <- ggplot(random_df, aes(x = x, y = y)) + 
-  geom_point(color = "hotpink", size = 5) + # 散布図
-  geom_path(color = "hotpink", size = 1, alpha = 0.5) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
-  geom_vline(xintercept = 0, color = "red", linetype = "dashed") + # 垂直線
-  gganimate::transition_reveal(along = iteration) + # フレーム
-  coord_fixed(ratio = 1) + # アスペクト比
-  labs(title = "Random Walk", 
-       subtitle = "iter : {frame_along}")
-
-# gif画像を作成
-gganimate::animate(plot = anim, nframes = max_iter+1, fps = 10)
-
-
-### ・複数サンプル -----
-
-# 試行回数を指定
-max_iter <- 100
+max_iter <- 600
 
 # サンプルサイズを指定
-sample_size <- 10
+sample_size <- 12
 
-# ランダムに値を生成
-random_value_vec <- sample(x = c(-1, 1), size = max_iter*sample_size, replace = TRUE)
-
-# ランダムに軸を生成
-random_axis_vec <- sample(x = c("x", "y"), size = max_iter*sample_size, replace = TRUE)
-
-# 試行ごとに集計
-random_df <- tidyr::tibble(
-  iteration = rep(c(0, 0, 1:max_iter), each = sample_size), 
-  id = rep(1:sample_size, times = max_iter+2) %>% 
-    as.factor(), 
-  random_val = c(rep(0, times = sample_size*2), random_value_vec), 
-  axis = c(rep(c("x", "y"), each = sample_size), random_axis_vec)
-) %>% 
+# 乱数の生成と集計
+trace_df <- tibble::tibble(
+  id = factor(1:sample_size) # サンプル番号
+) |> 
+  dplyr::reframe(
+    iter = c(0, 0, 1:max_iter), # 試行番号
+    r    = c(0, 0, sample(x = c(-1, 1), size = max_iter, replace = TRUE)), # 初期値0, 乱数±1
+    axis = c("x", "y", sample(x = c("x", "y"), size = max_iter, replace = TRUE)), # x軸・y軸方向
+    .by = id
+  ) |> # 移動量を生成
   tidyr::pivot_wider(
-    names_from = axis, 
-    values_from = random_val, 
+    names_from  = axis, 
+    values_from = r, 
     values_fill = 0
-  ) %>% # 横型に変形
-  dplyr::group_by(id) %>% # サンプルごとにグループ化
+  ) |> # 軸ごとの列に分割
   dplyr::mutate(
     x = cumsum(x), 
-    y = cumsum(y)
-  ) %>%  # 各試行までの合計
-  dplyr::ungroup() # グループ化の解除
+    y = cumsum(y), 
+    .by = id
+  ) # 総移動量を計算
+
+
+# グラフサイズを設定
+axis_size <- c(trace_df[["x"]], trace_df[["y"]]) |> 
+  abs() |> 
+  max()
+
+
+# 最終結果を抽出
+res_df <- trace_df |> 
+  dplyr::filter(iter == max_iter)
 
 # 2次元ランダムウォークを作図
-anim <- ggplot(random_df, aes(x = x, y = y, color = id)) + 
-  geom_point(size = 5, show.legend = FALSE) + # 散布図
-  geom_path(size = 1, alpha = 0.3, show.legend = FALSE) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
-  geom_vline(xintercept = 0, color = "red", linetype = "dashed") + # 垂直線
-  gganimate::transition_reveal(along = iteration) + # フレーム
-  coord_fixed(ratio = 1) + # アスペクト比
+graph <- ggplot() + 
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 初期値
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed") + # 初期値
+  geom_path(data = trace_df, 
+            mapping = aes(x = x, y = y, color = id), 
+            size = 1, alpha = 0.3) + # 軌跡
+  geom_point(data = res_df, 
+             mapping = aes(x = x, y = y, color = id), 
+             size = 4) + # 現在地点
+  guides(color = "none") + 
+  coord_fixed(ratio = 1, 
+              xlim = c(-axis_size, axis_size), 
+              ylim = c(-axis_size, axis_size)) + # アスペクト比
   labs(title = "Random Walk", 
-       subtitle = "iter : {frame_along}")
+       subtitle = paste("iteration:", max_iter), 
+       x = "x", y = "y")
+graph
 
-# gif画像を作成
-gganimate::animate(plot = anim, nframes = max_iter+1, fps = 10)
+# グラフを書出
+ggplot2::ggsave(
+  plot = graph, filename = "output/RandomWalk/2d_90.png", 
+  width = 10, height = 10, units = "in", dpi = 250
+)
 
 
-# 最終結果
-random_df %>% 
-  dplyr::filter(iteration == max_iter) %>% 
-  ggplot() + 
-  geom_point(mapping = aes(x = x, y = y, color = id), 
-             size = 5, show.legend = FALSE) + # 散布図
-  geom_path(data = random_df, mapping = aes(x = x, y = y, color = id), 
-            size = 1, alpha = 0.3, show.legend = FALSE) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
-  geom_vline(xintercept = 0, color = "red", linetype = "dashed") + # 垂直線
-  coord_fixed(ratio = 1) + # アスペクト比
+# 2次元ランダムウォークのアニメーションを作図
+anim <- ggplot() + 
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 初期値
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed") + # 初期値
+  geom_path(data = trace_df, 
+            mapping = aes(x = x, y = y, color = id), 
+            size = 1, alpha = 0.3) + # 軌跡
+  geom_point(data = trace_df, 
+             mapping = aes(x = x, y = y, color = id), 
+             size = 4) + # 現在地点
+  gganimate::transition_reveal(along = iter) + # フレーム切替
+  guides(color = "none") + 
+  coord_fixed(ratio = 1, 
+              xlim = c(-axis_size, axis_size), 
+              ylim = c(-axis_size, axis_size)) + # アスペクト比
   labs(title = "Random Walk", 
-       subtitle = paste0("iter : ", max_iter))
+       subtitle = "iteration: {frame_along}", 
+       x = "x", y = "y")
+
+# mp4動画を作成
+gganimate::animate(
+  plot = anim, nframes = max_iter+1, fps = 10, 
+  width = 10, height = 10, units = "in", res = 250, 
+  renderer = gganimate::av_renderer(file = "output/RandomWalk/2d_90.mp4")
+)
 
 
 # 2次元ランダムウォーク：全方向移動 -------------------------------------------------------------
 
-### ・全方向移動の確認 -----
+# 試行回数を指定
+max_iter <- 600
 
-# フレーム数を指定
-N <- 101
+# サンプルサイズを指定
+sample_size <- 12
 
-# 単位円上の点を作成
-df <- tibble::tibble(
-  n = 1:N, # 時計回りならN:1
-  d = seq(from = 0, to = 1, length.out = N), 
-  r = 2 * pi * d, 
-  x = cos(r), 
-  y = sin(r)
+# 乱数の生成と集計
+trace_df <- tibble::tibble(
+  id = factor(1:sample_size) # サンプル番号
+) |> 
+  dplyr::reframe(
+    iter = 0:max_iter, # 試行番号
+    t    = c(NA, runif(n = max_iter, min = 0, max = 2*pi)), # 初期値NA, 乱数0から2π
+    .by = id
+  ) |> # 移動量用の乱数を生成
+  dplyr::mutate(
+    x = dplyr::if_else(iter > 0, true = cos(t), false = 0), 
+    y = dplyr::if_else(iter > 0, true = sin(t), false = 0)
+  ) |> # 移動量を計算
+  dplyr::mutate(
+    x = cumsum(x), 
+    y = cumsum(y), .by = id
+  ) # 総移動量を計算
+
+
+# 最大移動量を取得
+max_val <- c(trace_df[["x"]], trace_df[["y"]]) |> 
+  abs() |> 
+  max()
+
+# 目盛間隔を設定
+tick_major_val <- 25
+tick_minor_val <- 0.5 * tick_major_val
+
+# グラフサイズを設定:(目盛間隔で切り上げ)
+axis_size <- ceiling(max_val / tick_minor_val) * tick_minor_val
+
+# ノルム目盛線の座標を作成
+circle_df <- tidyr::expand_grid(
+  r = seq(from = tick_minor_val, to = axis_size, by = tick_minor_val), # 半径
+  t = seq(from = 0, to = 2*pi, length.out = 361), # 1周期分のラジアン
+) |> # ノルムごとにラジアンを複製
+  dplyr::mutate(
+    x = r * cos(t), 
+    y = r * sin(t), 
+    grid  = dplyr::if_else(
+      r%%tick_major_val == 0, true = "major", false = "minor"
+    ) # 目盛カテゴリ
+  ) # 円周の座標を計算
+
+# 半円(範囲π)における目盛数を指定
+tick_num <- 6
+
+# 角度目盛線の座標を作成
+diag_df <- tibble::tibble(
+  i = seq(from = 0, to = tick_num-0.5, by = 0.5), # 目盛番号
+  t = i/tick_num * pi, # 半周期分のラジアン
+  a = tan(t), # 目盛線の傾き
+  grid = dplyr::if_else(
+    i%%1 == 0, true = "major", false = "minor"
+  ) # 目盛カテゴリ
 )
 
 
-# 単位円上の点を作図
-anim <- ggplot(df, aes(x = x, y = y)) + 
-  geom_point(color = "red", size = 5) + # 散布図
-  geom_path(color = "hotpink") + # 折れ線
-  gganimate::transition_reveal(d) + # フレーム
-  coord_fixed(ratio = 1) + # アスペクト比
-  labs(subtitle = "d = {frame_along}")
-
-# gif画像を作成
-gganimate::animate(plot = anim, nframes = N, fps = 10)
-
-
-# 原点から単位円上の点の方向を作図
-anim <- df %>% 
-  rbind(tibble::tibble(n = 1:N, d = NA, r = NA, x = 0, y = 0)) %>% # 原点を追加
-  ggplot(aes(x = x, y = y)) + 
-  geom_line(color = "hotpink") + # 折れ線グラフ
-  geom_point(color = "red", fill = "red", size = 5) + # 散布図
-  gganimate::transition_manual(n) + # フレーム
-  coord_fixed(ratio = 1) + # アスペクト比
-  labs(subtitle = "n = {current_frame}")
-
-# gif画像を作成
-gganimate::animate(plot = anim, nframes = N, fps = 10)
-
-
-### ・1サンプル -----
-
-# 試行回数を指定
-max_iter <- 100
-
-# ランダムに値を生成
-random_vec <- 2 * pi * runif(n = max_iter, min = 0, max = 1)
-
-# 試行ごとに集計
-random_df <- tibble::tibble(
-  iteration = 0:max_iter, 
-  x = c(0, cos(random_vec)), 
-  y = c(0, sin(random_vec))
-) %>% 
-  dplyr::mutate(
-    x = cumsum(x), 
-    y = cumsum(y)
-  ) # 各試行までの合計
+# 最終結果を抽出
+res_df <- trace_df |> 
+  dplyr::filter(iter == max_iter)
 
 # 2次元ランダムウォークを作図
-anim <- ggplot(random_df, aes(x = x, y = y)) + 
-  geom_point(color = "hotpink", size = 5) + # 散布図
-  geom_path(color = "hotpink", size = 1, alpha = 0.5) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
-  geom_vline(xintercept = 0, color = "red", linetype = "dashed") + # 垂直線
-  gganimate::transition_reveal(along = iteration) + # フレーム
-  coord_fixed(ratio = 1) + # アスペクト比
+graph <- ggplot() + 
+  geom_path(data = circle_df, 
+            mapping = aes(x = x, y = y, linewidth = grid, group = r), 
+            color = "white", show.legend = FALSE) + # ノルム目盛線
+  geom_abline(data = diag_df, 
+              mapping = aes(slope = a, intercept = 0, linewidth = grid), 
+              color = "white", show.legend = FALSE) + # 角度目盛線
+  geom_path(data = trace_df, 
+            mapping = aes(x = x, y = y, color = id), 
+            linewidth = 0.8, alpha = 0.3) + # 軌跡
+  geom_point(data = res_df, 
+             mapping = aes(x = x, y = y, color = id), 
+             size = 4) + # 最終地点
+  scale_linewidth_manual(breaks = c("major", "minor"), 
+                         values = c(0.5, 0.25)) + # 主・補助目盛線用
+  guides(color = "none") + 
+  coord_fixed(ratio = 1, 
+              xlim = c(-axis_size, axis_size), 
+              ylim = c(-axis_size, axis_size)) + # アスペクト比
   labs(title = "Random Walk", 
-       subtitle = "iter : {frame_along}")
+       subtitle = paste("iteration: ", max_iter), 
+       x = "x", y = "y")
+graph
 
-# gif画像を作成
-gganimate::animate(plot = anim, nframes = max_iter+1, fps = 10)
+# グラフを書出
+ggplot2::ggsave(
+  plot = graph, filename = "output/RandomWalk/2d_360.png", 
+  width = 10, height = 10, units = "in", dpi = 250
+)
 
 
-### ・複数サンプル -----
-
-# 試行回数を指定
-max_iter <- 100
-
-# サンプルサイズを指定
-sample_size <- 10
-
-# ランダムに値を生成
-random_vec <- 2 * pi * runif(n = max_iter*sample_size, min = 0, max = 1)
-
-# 試行ごとに集計
-random_df <- tibble::tibble(
-  iteration = rep(0:max_iter, each = sample_size), 
-  id = rep(1:sample_size, times = max_iter+1) %>% 
-    as.factor(), 
-  x = c(rep(0, times = sample_size), cos(random_vec)), 
-  y = c(rep(0, times = sample_size), sin(random_vec))
-) %>% 
-  dplyr::group_by(id) %>% # サンプルごとにグループ化
-  dplyr::mutate(
-    x = cumsum(x), 
-    y = cumsum(y)
-  ) %>% # 各試行までの合計
-  dplyr::ungroup() # グループ化の解除
-
-# 2次元ランダムウォークを作図
-anim <- ggplot(random_df, aes(x = x, y = y, color = id)) + 
-  geom_point(size = 5, show.legend = FALSE) + # 散布図
-  geom_path(size = 1, alpha = 0.3, show.legend = FALSE) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
-  geom_vline(xintercept = 0, color = "red", linetype = "dashed") + # 垂直線
-  gganimate::transition_reveal(along = iteration) + # フレーム
-  coord_fixed(ratio = 1) + # アスペクト比
+# 2次元ランダムウォークのアニメーションを作図
+anim <- ggplot() + 
+  geom_path(data = circle_df, 
+            mapping = aes(x = x, y = y, linewidth = grid, group = r), 
+            color = "white", show.legend = FALSE) + # ノルム目盛線
+  geom_abline(data = diag_df, 
+              mapping = aes(slope = a, intercept = 0, linewidth = grid), 
+              color = "white", show.legend = FALSE) + # 角度目盛線
+  geom_path(data = trace_df,
+            mapping = aes(x = x, y = y, color = id),
+            linewidth = 0.8, alpha = 0.3) + # 軌跡
+  geom_point(data = trace_df,
+             mapping = aes(x = x, y = y, color = id),
+             size = 4, show.legend = FALSE) + # 現在地点
+  gganimate::transition_reveal(along = iter) + # フレーム切替
+  scale_color_manual(breaks = factor(1:sample_size), values = color_df[["color_code"]]) + # (資料作成用)
+  scale_linewidth_manual(breaks = c("major", "minor"), 
+                         values = c(0.5, 0.25)) + # 主・補助目盛線用
+  guides(color = "none") + 
+  coord_fixed(ratio = 1, 
+              xlim = c(-axis_size, axis_size), 
+              ylim = c(-axis_size, axis_size)) + # アスペクト比
   labs(title = "Random Walk", 
-       subtitle = "iter : {frame_along}")
+       subtitle = "iteration: {frame_along}", 
+       color = "id", 
+       x = "x", y = "y")
 
-# gif画像を作成
-gganimate::animate(plot = anim, nframes = max_iter+1, fps = 10)
-
-
-# 最終結果
-random_df %>% 
-  dplyr::filter(iteration == max_iter) %>% 
-  ggplot() + 
-  geom_point(mapping = aes(x = x, y = y, color = id), 
-             size = 5, show.legend = FALSE) + # 散布図
-  geom_path(data = random_df, mapping = aes(x = x, y = y, color = id), 
-            size = 1, alpha = 0.3, show.legend = FALSE) + # 折れ線
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") + # 水平線
-  geom_vline(xintercept = 0, color = "red", linetype = "dashed") + # 垂直線
-  coord_fixed(ratio = 1) + # アスペクト比
-  labs(title = "Random Walk", 
-       subtitle = paste0("iter : ", max_iter))
+# 動画を作成
+gganimate::animate(
+  plot = anim, nframes = max_iter+1, fps = 10, 
+  width = 10, height = 10, units = "in", res = 250, 
+  renderer = gganimate::av_renderer(file = "output/RandomWalk/2d_360.mp4")
+)
 
 
